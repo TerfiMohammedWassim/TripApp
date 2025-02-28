@@ -25,7 +25,7 @@
                         <Label Text="Cities" FontSize="16" FontAttributes="Bold" TextColor="#333333" />
                         <HorizontalStackLayout Spacing="10">
                             <Label Text="Number:" VerticalOptions="Center" TextColor="#666666" />
-                            <Entry x:Name="CitiesCountEntry" Text="20" Keyboard="Numeric" WidthRequest="60" />
+                            <Entry x:Name="CitiesCountEntry" Text="20" Keyboard="Numeric" WidthRequest="300" TextColor="Black" />
                         </HorizontalStackLayout>
                         <Button x:Name="GenerateCitiesButton" 
                                 Text="Generate Cities" 
@@ -41,11 +41,11 @@
                         <Label Text="Algorithm" FontSize="16" FontAttributes="Bold" TextColor="#333333" />
                         <HorizontalStackLayout Spacing="10">
                             <Label Text="Population:" VerticalOptions="Center" TextColor="#666666" />
-                            <Entry x:Name="PopulationSizeEntry" Text="100" Keyboard="Numeric" WidthRequest="60" />
+                            <Entry x:Name="PopulationSizeEntry" Text="100" Keyboard="Numeric" WidthRequest="300" TextColor="Black" />
                         </HorizontalStackLayout>
                         <HorizontalStackLayout Spacing="10">
                             <Label Text="Generations:" VerticalOptions="Center" TextColor="#666666" />
-                            <Entry x:Name="GenerationsEntry" Text="1000" Keyboard="Numeric" WidthRequest="60" />
+                            <Entry x:Name="GenerationsEntry" Text="1000" Keyboard="Numeric" WidthRequest="300" TextColor="Black" />
                         </HorizontalStackLayout>
                     </VerticalStackLayout>
                 </Frame>
@@ -54,12 +54,12 @@
                     <VerticalStackLayout Spacing="10">
                         <Label Text="Parameters" FontSize="16" FontAttributes="Bold" TextColor="#333333" />
                         <HorizontalStackLayout Spacing="10">
-                            <Label Text="Mutation Rate:" VerticalOptions="Center" TextColor="#666666" />
-                            <Entry x:Name="MutationRateEntry" Text="0.01" Keyboard="Numeric" WidthRequest="60" />
+                            <Label Text="Mutation Rate:" VerticalOptions="Center"  TextColor="Black" />
+                            <Entry x:Name="MutationRateEntry" Text="0.01" Keyboard="Numeric" WidthRequest="300" TextColor="Black" />
                         </HorizontalStackLayout>
                         <HorizontalStackLayout Spacing="10">
                             <Label Text="Elitism:" VerticalOptions="Center" TextColor="#666666" />
-                            <CheckBox x:Name="ElitismCheckBox" IsChecked="True" />
+                            <CheckBox x:Name="ElitismCheckBox" IsChecked="True"  />
                         </HorizontalStackLayout>
                     </VerticalStackLayout>
                 </Frame>
