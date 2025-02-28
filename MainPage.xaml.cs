@@ -8,17 +8,14 @@
         {
             InitializeComponent();
         }
-
-        private void OnCounterClicked(object sender, EventArgs e)
+        private void OnGenerateCitiesClicked(object sender , EventArgs e) 
         {
-            count++;
+            Console.WriteLine(sender.ToString());
+        }
 
-            if (count == 1)
-                CounterBtn.Text = $"Clicked {count} time";
-            else
-                CounterBtn.Text = $"Clicked {count} times";
+        private void OnSolveClicked(object sender , EventArgs e)
+        {
 
-            SemanticScreenReader.Announce(CounterBtn.Text);
         }
     }
 
