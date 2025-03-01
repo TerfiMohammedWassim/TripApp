@@ -2,7 +2,7 @@
 {
     public partial class MainPage : ContentPage
     {
-        int count = 0;
+        List<Cities> cities = [];
 
         public MainPage()
         {
@@ -10,7 +10,7 @@
         }
         private void OnGenerateCitiesClicked(object sender , EventArgs e) 
         {
-            Console.WriteLine(sender.ToString());
+            Console.WriteLine(e.ToString());
         }
 
         private void OnSolveClicked(object sender , EventArgs e)
