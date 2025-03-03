@@ -32,7 +32,7 @@
                                     BackgroundColor="#4285F4"
                                     TextColor="White"
                                     CornerRadius="5"
-                                    Clicked="OnGenerateCitiesClicked" />
+                                    Clicked="OnGenerateCitiesClicked"/>
                         </VerticalStackLayout>
                     </Frame>
 
@@ -89,7 +89,8 @@
                     <GraphicsView x:Name="TspCanvas" 
                                  Grid.Row="1"
                                  BackgroundColor="White"
-                                 HeightRequest="600" />
+                                 HeightRequest="600" 
+                                 />
                 </Grid>
             </Frame>
 
