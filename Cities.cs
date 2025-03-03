@@ -55,7 +55,6 @@ namespace TripApp
         }
     }
 
-    // Using primary constructor for CitiesDrawable class
     public class CitiesDrawable(List<Cities> cities) : IDrawable
     {
         public void Draw(ICanvas canvas, RectF dirtyRect)
@@ -63,12 +62,10 @@ namespace TripApp
             if (cities == null || cities.Count == 0)
                 return;
 
-            // Draw connections first (so they appear behind the cities)
             foreach (var city in cities)
             {
                 foreach (var targetCity in city.getGoingTo())
                 {
-                    // Draw a line from this city to the target city
                     canvas.StrokeColor = Colors.Gray;
                     canvas.StrokeSize = 2;
                     canvas.DrawLine(
@@ -78,7 +75,6 @@ namespace TripApp
                         (float)targetCity.getCoordinationY()
                     );
 
-                    // Draw an arrow at the end of the line
                     DrawArrow(canvas,
                         (float)city.getCoordinationX(),
                         (float)city.getCoordinationY(),

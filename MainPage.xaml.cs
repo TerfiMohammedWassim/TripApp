@@ -9,6 +9,9 @@ namespace TripApp
     {
         private List<Cities> allCities = new List<Cities>();
         private Random random = new Random();
+        private Cities starting_city;
+        private Cities target_city;
+        private bool is_starting_first = false;
 
         private readonly string[] cityNames = new string[]
         {
@@ -30,8 +33,11 @@ namespace TripApp
         {
             allCities.Clear();
 
-            int numCities = random.Next(5, 11);
-
+            if (int.Parse(CitiesCountEntry.Text) < 3)
+            {
+                DisplayAlert("Error occured","you need to heve at least 4 cities","cancel");
+            }
+            int numCities = int.Parse(CitiesCountEntry.Text);
             for (int i = 0; i < numCities; i++)
             {
                 string name = cityNames[random.Next(cityNames.Length)];
@@ -64,6 +70,11 @@ namespace TripApp
         }
         private void OnSolveClicked(object sender, EventArgs e)
         {
+
+            if (starting_city == null || target_city == null) 
+            {
+                DisplayAlert("No Starting and Finishing", "you need to select a starting and finishing cities","ok");
+            }
 
             if (allCities == null || allCities.Count == 0)
             {
