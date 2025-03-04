@@ -210,7 +210,6 @@ namespace TripApp
                         name = target_city.getName(),
                         x = target_city.getCoordinationX(),
                         y = target_city.getCoordinationY(),
-                        goingTo = target_city.getGoingTo().Select(c => new { name = c.getName(), x = c.getCoordinationX(), y = c.getCoordinationY() }).ToList()
                     },
                     AllCities = new
                     {
