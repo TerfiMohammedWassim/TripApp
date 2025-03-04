@@ -199,9 +199,29 @@ namespace TripApp
                 
                 var requestData = new
                 {
-                    StartingCity = starting_city,
-                    TargetCity = target_city,
-                    AllCities = allCities
+                    StartingCity = new {
+                        name = starting_city.getName(),
+                        x = starting_city.getCoordinationX(),
+                        y = starting_city.getCoordinationY(),
+                        goingTo = starting_city.getGoingTo().Select(c => new { name = c.getName(), x = c.getCoordinationX(), y = c.getCoordinationY() }).ToList()
+                    },
+                    TargetCity = new
+                    {
+                        name = target_city.getName(),
+                        x = target_city.getCoordinationX(),
+                        y = target_city.getCoordinationY(),
+                        goingTo = target_city.getGoingTo().Select(c => new { name = c.getName(), x = c.getCoordinationX(), y = c.getCoordinationY() }).ToList()
+                    },
+                    AllCities = new
+                    {
+                        cities = allCities.Select(c => new
+                        {
+                            name = c.getName(),
+                            x = c.getCoordinationX(),
+                            y = c.getCoordinationY(),
+                            goingTo = c.getGoingTo().Select(gc => new { name = gc.getName(), x = gc.getCoordinationX(), y = gc.getCoordinationY() }).ToList()
+                        }).ToList()
+                    }
                 };
 
                 
