@@ -11,6 +11,7 @@ namespace TripApp
         private double coordination_y;
         private List<Cities> goingTo;
         private bool is_start_city = false;
+        private bool is_target_city = false;  
 
         public Cities(string name, double coordination_x, double coordination_y, List<Cities> goingTo)
         {
@@ -34,9 +35,34 @@ namespace TripApp
             return this.is_start_city;
         }
 
+        public bool is_Target_City()
+        {
+            return this.is_target_city;
+        }
+
+        public void setIsStarting(bool isStarting)
+        {
+            this.is_start_city = isStarting;
+        }
+
+        public void setIsTarget(bool isTarget)
+        {
+            this.is_target_city = isTarget;
+        }
+
         public String getName()
         {
             return this.name;
+        }
+
+        public double getX()
+        {
+            return this.coordination_x;
+        }
+
+        public double getY()
+        {
+            return this.coordination_y;
         }
 
         public double getCoordinationX()
@@ -55,13 +81,21 @@ namespace TripApp
         }
     }
 
-    public class CitiesDrawable(List<Cities> cities) : IDrawable
+    public class CitiesDrawable : IDrawable
     {
+        private List<Cities> cities;
+
+        public CitiesDrawable(List<Cities> cities)
+        {
+            this.cities = cities;
+        }
+
         public void Draw(ICanvas canvas, RectF dirtyRect)
         {
             if (cities == null || cities.Count == 0)
                 return;
 
+          
             foreach (var city in cities)
             {
                 foreach (var targetCity in city.getGoingTo())
@@ -84,11 +118,25 @@ namespace TripApp
                 }
             }
 
+          
             foreach (var city in cities)
             {
                 float radius = 15;
 
-                canvas.FillColor = city.is_Starting_City() ? Colors.Green : Colors.DodgerBlue;
+                
+                if (city.is_Starting_City())
+                {
+                    canvas.FillColor = Colors.Green;
+                }
+                else if (city.is_Target_City())
+                {
+                    canvas.FillColor = Colors.Red;  
+                }
+                else
+                {
+                    canvas.FillColor = Colors.DodgerBlue;
+                }
+
                 canvas.FillCircle(
                     (float)city.getCoordinationX(),
                     (float)city.getCoordinationY(),
