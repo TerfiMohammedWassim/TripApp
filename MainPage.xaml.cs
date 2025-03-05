@@ -1,23 +1,15 @@
-﻿using Microsoft.Maui.Graphics;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
+﻿using System.Net.Http.Json;
 
 namespace TripApp
 {
     public partial class MainPage : ContentPage
     {
-        private List<Cities> allCities = new List<Cities>();
+        private Dictionary<Cities, int> allCities = new Dictionary<Cities, int>();
         private Random random = new Random();
         private Cities starting_city;
         private Cities target_city;
         private static HttpClient client = new HttpClient();
-        private bool is_starting_first = true; 
+        private bool is_starting_first = true;
         private readonly string[] cityNames = new string[]
         {
             "New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia",
@@ -41,16 +33,15 @@ namespace TripApp
         {
             allCities.Clear();
 
-            
             if (starting_city != null)
             {
-                starting_city.setIsStarting(false);
+                starting_city.SetIsStarting(false);
                 starting_city = null;
             }
 
             if (target_city != null)
             {
-                target_city.setIsTarget(false);
+                target_city.SetIsTarget(false);
                 target_city = null;
             }
 
@@ -67,8 +58,9 @@ namespace TripApp
                 string name = cityNames[random.Next(cityNames.Length)];
                 double x = random.NextDouble() * (TspCanvas.Width * 0.8) + (TspCanvas.Width * 0.1);
                 double y = random.NextDouble() * (TspCanvas.Height * 0.8) + (TspCanvas.Height * 0.1);
-                Cities city = new Cities(name, x, y, new List<Cities>(), false);
-                allCities.Add(city);
+                Dictionary<Cities, int> connections = new Dictionary<Cities, int>();
+                Cities city = new Cities(name, x, y, connections, false);
+                allCities.Add(city, 0);
             }
 
             foreach (var city in allCities)
@@ -76,11 +68,12 @@ namespace TripApp
                 int numConnections = random.Next(1, 4);
                 for (int i = 0; i < numConnections; i++)
                 {
-                    var potentialCities = allCities.Where(c => c != city && !city.getGoingTo().Contains(c)).ToList();
+                    var potentialCities = allCities.Keys.Where(c => c != city.Key && !city.Key.GetGoingTo().ContainsKey(c)).ToList();
                     if (potentialCities.Count > 0)
                     {
                         Cities targetCity = potentialCities[random.Next(potentialCities.Count)];
-                        city.getGoingTo().Add(targetCity);
+                        int cost = random.Next(1, 30);
+                        city.Key.GetGoingTo().Add(targetCity, cost);
                     }
                 }
             }
@@ -92,62 +85,54 @@ namespace TripApp
             if (allCities.Count == 0)
                 return;
 
-
             Point tapLocation = new Point();
             if (e is TappedEventArgs tappedEvent)
             {
-                tapLocation =(Point)tappedEvent.GetPosition(TspCanvas);
+                tapLocation = (Point)tappedEvent.GetPosition(TspCanvas);
             }
 
-           
             Cities closestCity = FindClosestCity(tapLocation.X, tapLocation.Y);
 
             if (closestCity != null)
             {
                 if (is_starting_first)
                 {
-                    
                     if (target_city != null)
                     {
-                        target_city.setIsTarget(false);
+                        target_city.SetIsTarget(false);
                         target_city = null;
                     }
 
-                    
                     if (starting_city != null)
                     {
-                        starting_city.setIsStarting(false);
+                        starting_city.SetIsStarting(false);
                     }
 
-                    
                     starting_city = closestCity;
-                    starting_city.setIsStarting(true);
+                    starting_city.SetIsStarting(true);
 
-                    
                     is_starting_first = false;
 
-                    DisplayAlert("Starting City", $"Selected {starting_city.getName()} as starting city", "OK");
+                    DisplayAlert("Starting City", $"Selected {starting_city.GetName()} as starting city", "OK");
                 }
                 else
                 {
-                  
                     if (closestCity == starting_city)
                     {
                         DisplayAlert("Invalid Selection", "Starting and target cities must be different", "OK");
                     }
                     else
                     {
-                        
                         if (target_city != null)
                         {
-                            target_city.setIsTarget(false);
+                            target_city.SetIsTarget(false);
                         }
 
                         target_city = closestCity;
-                        target_city.setIsTarget(true);  
-                        is_starting_first = true; 
+                        target_city.SetIsTarget(true);
+                        is_starting_first = true;
 
-                        DisplayAlert("Target City", $"Selected {target_city.getName()} as target city", "OK");
+                        DisplayAlert("Target City", $"Selected {target_city.GetName()} as target city", "OK");
                     }
                 }
 
@@ -163,11 +148,11 @@ namespace TripApp
 
             foreach (var city in allCities)
             {
-                double distance = Math.Sqrt(Math.Pow(x - city.getCoordinationX(), 2) + Math.Pow(y - city.getCoordinationY(), 2));
+                double distance = Math.Sqrt(Math.Pow(x - city.Key.GetX(), 2) + Math.Pow(y - city.Key.GetY(), 2));
                 if (distance < minDistance && distance < maxDistance)
                 {
                     minDistance = distance;
-                    closest = city;
+                    closest = city.Key;
                 }
             }
 
@@ -194,42 +179,47 @@ namespace TripApp
                 client.DefaultRequestHeaders.Accept.Clear();
                 client.DefaultRequestHeaders.Add("User-Agent", "Maui TSP Solver");
 
-                
                 var requestData = new
                 {
-                    MutationRateEntry = MutationRateEntry.Text,
-                    generation = GenerationsEntry.Text,
-                    population = PopulationSizeEntry.Text,
-                    StartingCity = new {
-                        name = starting_city.getName(),
-                        x = starting_city.getCoordinationX(),
-                        y = starting_city.getCoordinationY(),
-                        goingTo = starting_city.getGoingTo().Select(c => new { name = c.getName(), x = c.getCoordinationX(), y = c.getCoordinationY() }).ToList()
+                    MutationRate = MutationRateEntry.Text,
+                    Generations = GenerationsEntry.Text,
+                    Population = PopulationSizeEntry.Text,
+                    StartingCity = new
+                    {
+                        Name = starting_city.GetName(),
+                        X = starting_city.GetX(),
+                        Y = starting_city.GetY(),
+                        GoingTo = starting_city.GetGoingTo().Select(c => new {
+                            Name = c.Key.GetName(),
+                            X = c.Key.GetX(),
+                            Y = c.Key.GetY(),
+                            Cost = c.Value
+                        }).ToList()
                     },
                     TargetCity = new
                     {
-                        name = target_city.getName(),
-                        x = target_city.getCoordinationX(),
-                        y = target_city.getCoordinationY(),
+                        Name = target_city.GetName(),
+                        X = target_city.GetX(),
+                        Y = target_city.GetY()
                     },
-                    AllCities = new
+                    AllCities = allCities.Select(c => new
                     {
-                        cities = allCities.Select(c => new
-                        {
-                            name = c.getName(),
-                            x = c.getCoordinationX(),
-                            y = c.getCoordinationY(),
-                            goingTo = c.getGoingTo().Select(gc => new { name = gc.getName(), x = gc.getCoordinationX(), y = gc.getCoordinationY() }).ToList()
+                        Name = c.Key.GetName(),
+                        X = c.Key.GetX(),
+                        Y = c.Key.GetY(),
+                        GoingTo = c.Key.GetGoingTo().Select(gc => new {
+                            Name = gc.Key.GetName(),
+                            X = gc.Key.GetX(),
+                            Y = gc.Key.GetY(),
+                            Cost = gc.Value
                         }).ToList()
-                    }
+                    }).ToList()
                 };
 
-                
                 var response = await client.PostAsJsonAsync("/solve", requestData);
 
                 if (response.IsSuccessStatusCode)
                 {
-                  
                     var result = await response.Content.ReadFromJsonAsync<dynamic>();
                     Console.WriteLine(result);
 
