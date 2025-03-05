@@ -32,7 +32,6 @@ namespace TripApp
         {
             InitializeComponent();
             TspCanvas.Drawable = new CitiesDrawable(allCities);
-
             var tapGestureRecognizer = new TapGestureRecognizer();
             tapGestureRecognizer.Tapped += OnCanvasTapped;
             TspCanvas.GestureRecognizers.Add(tapGestureRecognizer);
@@ -85,7 +84,6 @@ namespace TripApp
                     }
                 }
             }
-
             TspCanvas.Invalidate();
         }
 
@@ -199,6 +197,9 @@ namespace TripApp
                 
                 var requestData = new
                 {
+                    MutationRateEntry = MutationRateEntry.Text,
+                    generation = GenerationsEntry.Text,
+                    population = PopulationSizeEntry.Text,
                     StartingCity = new {
                         name = starting_city.getName(),
                         x = starting_city.getCoordinationX(),
