@@ -1,4 +1,6 @@
 ﻿using System.Net.Http.Json;
+using System.Runtime.ConstrainedExecution;
+using System.Text.Json;
 
 namespace TripApp
 {
@@ -10,6 +12,8 @@ namespace TripApp
         private Cities target_city;
         private static HttpClient client = new HttpClient();
         private bool is_starting_first = true;
+        // Add a new field to store best paths
+        private Dictionary<string, List<string>> bestPaths = new Dictionary<string, List<string>>();
         private readonly string[] cityNames = new string[]
         {
             "New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia",
@@ -23,15 +27,36 @@ namespace TripApp
         public MainPage()
         {
             InitializeComponent();
-            TspCanvas.Drawable = new CitiesDrawable(allCities);
+            TspCanvas.Drawable = new CitiesDrawable(allCities, bestPaths); 
             var tapGestureRecognizer = new TapGestureRecognizer();
             tapGestureRecognizer.Tapped += OnCanvasTapped;
             TspCanvas.GestureRecognizers.Add(tapGestureRecognizer);
         }
 
+        private static string GenerateRandomString(int length)
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            Random random = new Random();
+            return new string(Enumerable.Repeat(chars, length)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
+        }
+        private Cities checkDuplication(Dictionary<Cities, int> cities, Cities city)
+        {
+            foreach (var c in cities)
+            {
+                if (c.Key.GetName() == city.GetName())
+                {
+                    city.setName(GenerateRandomString(5));
+                    return city;
+                }
+            }
+            return city;
+        }
+
         private void OnGenerateCitiesClicked(object sender, EventArgs e)
         {
             allCities.Clear();
+            bestPaths.Clear(); 
 
             if (starting_city != null)
             {
@@ -52,7 +77,11 @@ namespace TripApp
                 DisplayAlert("Error occurred", "You need to have at least 4 cities", "OK");
                 return;
             }
-
+            if (int.Parse(CitiesCountEntry.Text) > cityNames.Length)
+            {
+                DisplayAlert("Error Occured", $"tou need to have at most {cityNames.Length} cities", "OK");
+                return;
+            }
             for (int i = 0; i < numCities; i++)
             {
                 string name = cityNames[random.Next(cityNames.Length)];
@@ -60,12 +89,13 @@ namespace TripApp
                 double y = random.NextDouble() * (TspCanvas.Height * 0.8) + (TspCanvas.Height * 0.1);
                 Dictionary<Cities, int> connections = new Dictionary<Cities, int>();
                 Cities city = new Cities(name, x, y, connections, false);
+                city = checkDuplication(allCities, city);
                 allCities.Add(city, 0);
             }
 
             foreach (var city in allCities)
             {
-                int numConnections = random.Next(1, 4);
+                int numConnections = random.Next(1, 3);
                 for (int i = 0; i < numConnections; i++)
                 {
                     var potentialCities = allCities.Keys.Where(c => c != city.Key && !city.Key.GetGoingTo().ContainsKey(c)).ToList();
@@ -163,9 +193,9 @@ namespace TripApp
         {
             try
             {
-                if (starting_city == null || target_city == null)
+                if (starting_city == null)
                 {
-                    await DisplayAlert("No Starting and Finishing", "You need to select starting and finishing cities", "OK");
+                    await DisplayAlert("No Starting City", "You need to select a starting city", "OK");
                     return;
                 }
 
@@ -187,8 +217,6 @@ namespace TripApp
                     StartingCity = new
                     {
                         Name = starting_city.GetName(),
-                        X = starting_city.GetX(),
-                        Y = starting_city.GetY(),
                         GoingTo = starting_city.GetGoingTo().Select(c => new {
                             Name = c.Key.GetName(),
                             X = c.Key.GetX(),
@@ -196,35 +224,63 @@ namespace TripApp
                             Cost = c.Value
                         }).ToList()
                     },
-                    TargetCity = new
-                    {
-                        Name = target_city.GetName(),
-                        X = target_city.GetX(),
-                        Y = target_city.GetY()
-                    },
                     AllCities = allCities.Select(c => new
                     {
                         Name = c.Key.GetName(),
-                        X = c.Key.GetX(),
-                        Y = c.Key.GetY(),
                         GoingTo = c.Key.GetGoingTo().Select(gc => new {
                             Name = gc.Key.GetName(),
-                            X = gc.Key.GetX(),
-                            Y = gc.Key.GetY(),
                             Cost = gc.Value
                         }).ToList()
                     }).ToList()
                 };
 
-                var response = await client.PostAsJsonAsync("/solve", requestData);
+                var response = await client.PostAsJsonAsync<dynamic>("/solve", requestData);
 
                 if (response.IsSuccessStatusCode)
                 {
-                    var result = await response.Content.ReadFromJsonAsync<dynamic>();
-                    Console.WriteLine(result);
+                    
+                    bestPaths.Clear();
+
+                    var resultString = await response.Content.ReadAsStringAsync();
+                    var resultJson = JsonDocument.Parse(resultString);
+
+                    if (resultJson.RootElement.TryGetProperty("bestPaths", out var pathsElement))
+                    {
+                        foreach (var targetProperty in pathsElement.EnumerateObject())
+                        {
+                            string targetCity = targetProperty.Name;
+                            var pathData = targetProperty.Value;
+
+                            if (pathData.TryGetProperty("path", out var pathArray))
+                            {
+                                List<string> path = new List<string>();
+                                foreach (var cityElement in pathArray.EnumerateArray())
+                                {
+                                    path.Add(cityElement.GetString());
+                                }
+                                bestPaths[targetCity] = path;
+                            }
+                        }
+                    }
+
+                    int totalCitiesReached = 0;
+                    int totalCities = 0;
+
+                    if (resultJson.RootElement.TryGetProperty("totalCitiesReached", out var citiesReachedElement))
+                    {
+                        totalCitiesReached = citiesReachedElement.GetInt32();
+                    }
+
+                    if (resultJson.RootElement.TryGetProperty("totalCities", out var totalCitiesElement))
+                    {
+                        totalCities = totalCitiesElement.GetInt32();
+                    }
 
                     TspCanvas.Invalidate();
-                    await DisplayAlert("Solution", "Path calculated successfully!", "OK");
+
+                    await DisplayAlert("Solution",
+                        $"Paths calculated successfully!\n" +
+                        $"Cities reached: {totalCitiesReached} out of {totalCities}", "OK");
                 }
                 else
                 {
