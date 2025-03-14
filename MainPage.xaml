@@ -9,44 +9,40 @@
     <ScrollView>
         <Grid RowDefinitions="Auto,*,Auto" Padding="20" RowSpacing="20">
             <!-- Header Section -->
-            <VerticalStackLayout Grid.Row="0" Spacing="10">
+            <VerticalStackLayout Grid.Row="0" Spacing="15">
                 <Label Text="Traveling Salesman Solver" 
-                       FontSize="32" 
+                       FontSize="28" 
                        FontAttributes="Bold"
                        HorizontalOptions="Center"
-                       TextColor="#212529"
-                       Margin="0,0,0,8" />
+                       TextColor="#212529" />
 
                 <Label Text="Generate random cities and find optimal routes using genetic algorithms" 
-                       FontSize="16" 
+                       FontSize="14" 
                        HorizontalOptions="Center"
-                       TextColor="#6c757d"
-                       Margin="0,0,0,20" />
+                       TextColor="#6c757d" />
 
                 <!-- Settings Cards -->
                 <Frame BorderColor="Transparent" 
                        BackgroundColor="White" 
                        CornerRadius="16" 
                        HasShadow="True"
-                       Padding="0"
-                       Margin="0,0,0,15">
+                       Padding="0">
                     <Grid ColumnDefinitions="*,*,*" Padding="0">
                         <!-- Cities Settings -->
                         <Border Grid.Column="0" 
                                 StrokeShape="RoundRectangle 16,16,0,0"
                                 Stroke="Transparent"
-                                StrokeThickness="0"
                                 BackgroundColor="White">
                             <VerticalStackLayout Padding="20" Spacing="15">
                                 <Label Text="Cities" 
-                                       FontSize="18" 
+                                       FontSize="16" 
                                        FontAttributes="Bold" 
                                        TextColor="#212529" />
 
                                 <Border StrokeShape="RoundRectangle 8"
                                         Stroke="#e9ecef"
                                         StrokeThickness="1"
-                                        Padding="10,0">
+                                        Padding="10">
                                     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                                         <Label Grid.Column="0" 
                                                Text="Number:" 
@@ -68,27 +64,26 @@
                                         TextColor="White"
                                         CornerRadius="8"
                                         FontAttributes="Bold"
-                                        HeightRequest="45"
+                                        HeightRequest="40"
                                         Clicked="OnGenerateCitiesClicked"/>
                             </VerticalStackLayout>
                         </Border>
 
-                        
+                        <!-- Algorithm Settings -->
                         <Border Grid.Column="1" 
                                 StrokeShape="RoundRectangle 0,0,0,0"
                                 Stroke="Transparent"
-                                StrokeThickness="0"
                                 BackgroundColor="White">
                             <VerticalStackLayout Padding="20" Spacing="15">
                                 <Label Text="Algorithm" 
-                                       FontSize="18" 
+                                       FontSize="16" 
                                        FontAttributes="Bold" 
                                        TextColor="#212529" />
 
                                 <Border StrokeShape="RoundRectangle 8"
                                         Stroke="#e9ecef"
                                         StrokeThickness="1"
-                                        Padding="10,0">
+                                        Padding="10">
                                     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                                         <Label Grid.Column="0" 
                                                Text="Population:" 
@@ -107,7 +102,7 @@
                                 <Border StrokeShape="RoundRectangle 8"
                                         Stroke="#e9ecef"
                                         StrokeThickness="1"
-                                        Padding="10,0">
+                                        Padding="10">
                                     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                                         <Label Grid.Column="0" 
                                                Text="Generations:" 
@@ -129,18 +124,17 @@
                         <Border Grid.Column="2" 
                                 StrokeShape="RoundRectangle 0,16,16,0"
                                 Stroke="Transparent"
-                                StrokeThickness="0"
                                 BackgroundColor="White">
                             <VerticalStackLayout Padding="20" Spacing="15">
                                 <Label Text="Parameters" 
-                                       FontSize="18" 
+                                       FontSize="16" 
                                        FontAttributes="Bold" 
                                        TextColor="#212529" />
 
                                 <Border StrokeShape="RoundRectangle 8"
                                         Stroke="#e9ecef"
                                         StrokeThickness="1"
-                                        Padding="10,0">
+                                        Padding="10">
                                     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                                         <Label Grid.Column="0" 
                                                Text="Mutation Rate:" 
@@ -175,10 +169,10 @@
                         Text="Solve TSP Problem" 
                         BackgroundColor="#198754" 
                         TextColor="White" 
-                        CornerRadius="10"
+                        CornerRadius="8"
                         FontAttributes="Bold"
                         FontSize="16"
-                        HeightRequest="50"
+                        HeightRequest="45"
                         Clicked="OnSolveClicked" />
             </VerticalStackLayout>
 
@@ -188,15 +182,14 @@
                    BackgroundColor="White" 
                    CornerRadius="16" 
                    HasShadow="True"
-                   Padding="0"
-                   Margin="0,0,0,0">
+                   Padding="0">
                 <Grid RowDefinitions="Auto,*" Padding="20">
                     <Label Text="Network Visualization" 
-                           FontSize="20" 
+                           FontSize="18" 
                            FontAttributes="Bold" 
                            HorizontalOptions="Center"
                            TextColor="#212529"
-                           Margin="0,5,0,20" />
+                           Margin="0,0,0,15" />
 
                     <Border Grid.Row="1"
                             StrokeShape="RoundRectangle 12"
@@ -209,7 +202,37 @@
                 </Grid>
             </Frame>
 
-            <!-- Results Section -->
+            <!-- Add/Remove City Buttons -->
+            <Frame Grid.Row="1" 
+                   HorizontalOptions="End"
+                   VerticalOptions="Start"
+                   Padding="10"
+                   CornerRadius="16"
+                   HasShadow="True"
+                   BackgroundColor="White">
+                <StackLayout Spacing="10">
+                    <Button x:Name="AddCity"
+                            Text="Add City"
+                            BackgroundColor="#28a745"
+                            TextColor="White"
+                            CornerRadius="8"
+                            FontAttributes="Bold"
+                            HeightRequest="40"
+                            Clicked="OnAddCityClicked"/>
+
+                    <Button x:Name="RemoveCity"
+                            Text="Remove City"
+                            BackgroundColor="#dc3545"
+                            TextColor="White"
+                            CornerRadius="8"
+                            FontAttributes="Bold"
+                            HeightRequest="40" 
+                            Clicked="OnDeleteCityClicked"
+                            />
+                </StackLayout>
+            </Frame>
+
+            <!-- Status and Results Section -->
             <Frame Grid.Row="2" 
                    BorderColor="Transparent" 
                    BackgroundColor="White" 
@@ -219,13 +242,13 @@
                 <Grid RowDefinitions="Auto,*" ColumnDefinitions="1*,1*" Padding="20" RowSpacing="15">
                     <Label Grid.Row="0" Grid.Column="0" 
                            Text="Algorithm Status" 
-                           FontSize="18" 
+                           FontSize="16" 
                            FontAttributes="Bold"
                            TextColor="#212529" />
 
                     <Label Grid.Row="0" Grid.Column="1" 
                            Text="Optimal Route" 
-                           FontSize="18" 
+                           FontSize="16" 
                            FontAttributes="Bold"
                            TextColor="#212529" />
 
@@ -237,7 +260,7 @@
                             <Label Text="Generation: 0" 
                                    x:Name="GenerationLabel" 
                                    TextColor="#495057"
-                                   FontSize="15" />
+                                   FontSize="14" />
                         </Border>
 
                         <Border StrokeShape="RoundRectangle 8"
@@ -247,7 +270,7 @@
                             <Label Text="Best Fitness: 0.0" 
                                    x:Name="FitnessLabel" 
                                    TextColor="#495057"
-                                   FontSize="15" />
+                                   FontSize="14" />
                         </Border>
 
                         <Border StrokeShape="RoundRectangle 8"
@@ -257,7 +280,7 @@
                             <Label Text="Distance: 0 km" 
                                    x:Name="DistanceLabel" 
                                    TextColor="#495057"
-                                   FontSize="15" />
+                                   FontSize="14" />
                         </Border>
 
                         <ProgressBar x:Name="AlgorithmProgress" 
@@ -276,7 +299,7 @@
                             <Label x:Name="SolutionPathLabel" 
                                    Text="No solution yet. Click 'Solve' to find optimal route."
                                    TextColor="#6c757d"
-                                   FontSize="15" />
+                                   FontSize="14" />
                         </ScrollView>
                     </Border>
                 </Grid>

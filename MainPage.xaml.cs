@@ -1,6 +1,7 @@
 ﻿using System.Net.Http.Json;
-using System.Runtime.ConstrainedExecution;
 using System.Text.Json;
+using System.Threading.Tasks;
+using System.Xml.Serialization;
 
 namespace TripApp
 {
@@ -9,10 +10,14 @@ namespace TripApp
         private Dictionary<Cities, int> allCities = new Dictionary<Cities, int>();
         private Random random = new Random();
         private Cities starting_city;
-        private Cities target_city;
+
         private static HttpClient client = new HttpClient();
         private bool is_starting_first = true;
-        // Add a new field to store best paths
+        private Cities target_city;
+
+        private bool isWaitingForTap = false;
+        private string pendingCityName = null;
+
         private Dictionary<string, List<string>> bestPaths = new Dictionary<string, List<string>>();
         private readonly string[] cityNames = new string[]
         {
@@ -27,7 +32,7 @@ namespace TripApp
         public MainPage()
         {
             InitializeComponent();
-            TspCanvas.Drawable = new CitiesDrawable(allCities, bestPaths); 
+            TspCanvas.Drawable = new CitiesDrawable(allCities, bestPaths);
             var tapGestureRecognizer = new TapGestureRecognizer();
             tapGestureRecognizer.Tapped += OnCanvasTapped;
             TspCanvas.GestureRecognizers.Add(tapGestureRecognizer);
@@ -40,6 +45,42 @@ namespace TripApp
             return new string(Enumerable.Repeat(chars, length)
                 .Select(s => s[random.Next(s.Length)]).ToArray());
         }
+
+
+        private void OnStartInteraction(object sender, TouchEventArgs e)
+        {
+            var touchPoint = e.Touches.FirstOrDefault();
+            if (touchPoint != null)
+            {
+                // This condition was incorrect - fixed logical comparison
+                if (allCities.Keys.Any(city => Math.Abs(city.GetX() - touchPoint.X) < 10 &&
+                                               Math.Abs(city.GetY() - touchPoint.Y) < 10))
+                {
+                    starting_city = allCities.Keys.First(city =>
+                        Math.Abs(city.GetX() - touchPoint.X) < 10 &&
+                        Math.Abs(city.GetY() - touchPoint.Y) < 10);
+                }
+                else if (allCities.Keys.Any(city => Math.Abs(city.GetX() - touchPoint.X) < 10 &&
+                                                    Math.Abs(city.GetY() - touchPoint.Y) < 10))
+                {
+                    target_city = allCities.Keys.First(city =>
+                        Math.Abs(city.GetX() - touchPoint.X) < 10 &&
+                        Math.Abs(city.GetY() - touchPoint.Y) < 10);
+                }
+            }
+            TspCanvas.Invalidate();
+        }
+
+        private void OnDragInteraction(object sender, EventArgs e)
+        {
+            TspCanvas.Invalidate();
+        }
+
+        private void OnEndInteraction(object sender, EventArgs e)
+        {
+            TspCanvas.Invalidate();
+        }
+
         private Cities checkDuplication(Dictionary<Cities, int> cities, Cities city)
         {
             foreach (var c in cities)
@@ -47,16 +88,124 @@ namespace TripApp
                 if (c.Key.GetName() == city.GetName())
                 {
                     city.setName(GenerateRandomString(5));
-                    return city;
+                    return checkDuplication(cities, city); // Added recursion to handle multiple duplicates
                 }
             }
             return city;
         }
 
+        private void OnAddCityClicked(object sender, EventArgs e)
+        {
+            _ = StartAddingCity();
+        }
+
+        private async Task StartAddingCity()
+        {
+            // Check if cities have been generated
+            if (allCities.Count == 0)
+            {
+                await DisplayAlert("Error", "You need to generate cities first.", "OK");
+                return;
+            }
+
+            // Prompt user for city name
+            string cityName = await DisplayPromptAsync(
+                "Add City",
+                "Enter the name of the city:",
+                "OK",
+                "Cancel"
+            );
+
+            // Handle cancellation or empty input
+            if (string.IsNullOrWhiteSpace(cityName))
+            {
+                await DisplayAlert("Error", "City name cannot be empty.", "OK");
+                return;
+            }
+
+            // Check if the city name already exists
+            if (allCities.Any(city => city.Key.GetName().Equals(cityName, StringComparison.OrdinalIgnoreCase)))
+            {
+                await DisplayAlert("Error", "A city with this name already exists.", "OK");
+                return;
+            }
+
+            // Store the pending city name
+            pendingCityName = cityName;
+            isWaitingForTap = true;
+
+            await DisplayAlert("Set Location", "Now tap on the canvas to set the city location.", "OK");
+        }
+
+
+        private void OnDeleteCityClicked(object sender, EventArgs e)
+        {
+            _ = DeleteCityAsync();
+        }
+
+        private async Task DeleteCityAsync()
+        {
+            if (allCities.Count == 0)
+            {
+                await DisplayAlert("Error Occurred", "You need to generate cities first", "OK");
+                return;
+            }
+
+            string cityToDelete = await DisplayPromptAsync("Delete City", "Enter the name of the city to delete", "OK", "Cancel");
+            if (string.IsNullOrEmpty(cityToDelete))
+                return;
+
+            Cities cityToRemove = null;
+            foreach (var city in allCities.Keys)
+            {
+                if (city.GetName().Equals(cityToDelete, StringComparison.OrdinalIgnoreCase))
+                {
+                    cityToRemove = city;
+                    break;
+                }
+            }
+
+            if (cityToRemove == null)
+            {
+                await DisplayAlert("Error Occurred", "City not found", "OK");
+                return;
+            }
+
+            if (cityToRemove == starting_city)
+            {
+                bool answer = await DisplayAlert("Delete City", "Are you sure you want to delete the starting city?", "Yes", "No");
+                if (answer)
+                {
+                    starting_city.SetIsStarting(false);
+                    starting_city = null;
+                }
+                else
+                {
+                    return;
+                }
+            }
+
+            if (cityToRemove == target_city)
+            {
+                target_city = null;
+            }
+
+            foreach (var city in allCities.Keys.ToList())
+            {
+                if (city.GetGoingTo().ContainsKey(cityToRemove))
+                {
+                    city.GetGoingTo().Remove(cityToRemove);
+                }
+            }
+
+            allCities.Remove(cityToRemove);
+            TspCanvas.Invalidate();
+        }
+
         private void OnGenerateCitiesClicked(object sender, EventArgs e)
         {
             allCities.Clear();
-            bestPaths.Clear(); 
+            bestPaths.Clear();
 
             if (starting_city != null)
             {
@@ -64,32 +213,30 @@ namespace TripApp
                 starting_city = null;
             }
 
-            if (target_city != null)
-            {
-                target_city.SetIsTarget(false);
-                target_city = null;
-            }
-
+            target_city = null;
             is_starting_first = true;
 
             if (!int.TryParse(CitiesCountEntry.Text, out int numCities) || numCities < 4)
             {
-                DisplayAlert("Error occurred", "You need to have at least 4 cities", "OK");
+                DisplayAlert("Error Occurred", "You need to have at least 4 cities", "OK");
                 return;
             }
-            if (int.Parse(CitiesCountEntry.Text) > cityNames.Length)
+            if (numCities > cityNames.Length)
             {
-                DisplayAlert("Error Occured", $"tou need to have at most {cityNames.Length} cities", "OK");
+                DisplayAlert("Error Occurred", $"You need to have at most {cityNames.Length} cities", "OK");
                 return;
             }
+
+            // Create a shuffled list of city names to avoid duplicates
+            var shuffledCityNames = cityNames.OrderBy(x => random.Next()).Take(numCities).ToList();
+
             for (int i = 0; i < numCities; i++)
             {
-                string name = cityNames[random.Next(cityNames.Length)];
+                string name = shuffledCityNames[i];
                 double x = random.NextDouble() * (TspCanvas.Width * 0.8) + (TspCanvas.Width * 0.1);
                 double y = random.NextDouble() * (TspCanvas.Height * 0.8) + (TspCanvas.Height * 0.1);
                 Dictionary<Cities, int> connections = new Dictionary<Cities, int>();
                 Cities city = new Cities(name, x, y, connections, false);
-                city = checkDuplication(allCities, city);
                 allCities.Add(city, 0);
             }
 
@@ -110,16 +257,50 @@ namespace TripApp
             TspCanvas.Invalidate();
         }
 
+        // Fixed method signature - parameter types were incorrect
+        private void OnCanvasDraging(object sender, EventArgs e)
+        {
+            TspCanvas.Invalidate();
+        }
+
         private void OnCanvasTapped(object sender, EventArgs e)
         {
-            if (allCities.Count == 0)
-                return;
-
             Point tapLocation = new Point();
             if (e is TappedEventArgs tappedEvent)
             {
-                tapLocation = (Point)tappedEvent.GetPosition(TspCanvas);
+                tapLocation = (Point)tappedEvent.GetPosition((View)sender);
             }
+
+            if (isWaitingForTap && !string.IsNullOrEmpty(pendingCityName))
+            {
+                // We're waiting for a tap to set a new city location
+                double x = tapLocation.X;
+                double y = tapLocation.Y;
+
+                // Check if the location is already taken
+                if (allCities.Any(city =>
+                    Math.Abs(city.Key.GetX() - x) < 10 &&
+                    Math.Abs(city.Key.GetY() - y) < 10))
+                {
+                    DisplayAlert("Error", "This location is too close to another city.", "OK");
+                    return;
+                }
+
+                // Add the new city at the tapped location
+                allCities.Add(new Cities(pendingCityName, x, y, new Dictionary<Cities, int>(), false), 0);
+
+                // Reset the waiting state
+                isWaitingForTap = false;
+                pendingCityName = null;
+
+                // Refresh the canvas
+                TspCanvas.Invalidate();
+                return;
+            }
+
+            // If we're not waiting for a tap to add a city, proceed with the original functionality
+            if (allCities.Count == 0)
+                return;
 
             Cities closestCity = FindClosestCity(tapLocation.X, tapLocation.Y);
 
@@ -127,12 +308,6 @@ namespace TripApp
             {
                 if (is_starting_first)
                 {
-                    if (target_city != null)
-                    {
-                        target_city.SetIsTarget(false);
-                        target_city = null;
-                    }
-
                     if (starting_city != null)
                     {
                         starting_city.SetIsStarting(false);
@@ -153,16 +328,9 @@ namespace TripApp
                     }
                     else
                     {
-                        if (target_city != null)
-                        {
-                            target_city.SetIsTarget(false);
-                        }
-
                         target_city = closestCity;
-                        target_city.SetIsTarget(true);
-                        is_starting_first = true;
-
                         DisplayAlert("Target City", $"Selected {target_city.GetName()} as target city", "OK");
+                        is_starting_first = true;
                     }
                 }
 
@@ -199,9 +367,37 @@ namespace TripApp
                     return;
                 }
 
+                if (target_city == null)
+                {
+                    await DisplayAlert("No Target City", "You need to select a target city", "OK");
+                    return;
+                }
+
                 if (allCities == null || allCities.Count == 0)
                 {
                     await DisplayAlert("No Cities", "Please generate cities first", "OK");
+                    return;
+                }
+
+                // Validate input fields before sending to server
+                if (!double.TryParse(MutationRateEntry.Text, out double mutationRate) ||
+                    mutationRate < 0 || mutationRate > 1)
+                {
+                    await DisplayAlert("Invalid Input", "Mutation rate must be a number between 0 and 1", "OK");
+                    return;
+                }
+
+                if (!int.TryParse(GenerationsEntry.Text, out int generations) ||
+                    generations <= 0)
+                {
+                    await DisplayAlert("Invalid Input", "Generations must be a positive number", "OK");
+                    return;
+                }
+
+                if (!int.TryParse(PopulationSizeEntry.Text, out int population) ||
+                    population <= 0)
+                {
+                    await DisplayAlert("Invalid Input", "Population size must be a positive number", "OK");
                     return;
                 }
 
@@ -211,12 +407,14 @@ namespace TripApp
 
                 var requestData = new
                 {
-                    MutationRate = MutationRateEntry.Text,
-                    Generations = GenerationsEntry.Text,
-                    Population = PopulationSizeEntry.Text,
+                    MutationRate = mutationRate, // Fixed: Using parsed value instead of text
+                    Generations = generations,    // Fixed: Using parsed value instead of text
+                    Population = population,      // Fixed: Using parsed value instead of text
                     StartingCity = new
                     {
                         Name = starting_city.GetName(),
+                        X = starting_city.GetX(),  // Added X coordinate
+                        Y = starting_city.GetY(),  // Added Y coordinate
                         GoingTo = starting_city.GetGoingTo().Select(c => new {
                             Name = c.Key.GetName(),
                             X = c.Key.GetX(),
@@ -224,9 +422,12 @@ namespace TripApp
                             Cost = c.Value
                         }).ToList()
                     },
+                    TargetCity = target_city.GetName(),
                     AllCities = allCities.Select(c => new
                     {
                         Name = c.Key.GetName(),
+                        X = c.Key.GetX(),  // Added X coordinate
+                        Y = c.Key.GetY(),  // Added Y coordinate
                         GoingTo = c.Key.GetGoingTo().Select(gc => new {
                             Name = gc.Key.GetName(),
                             Cost = gc.Value
@@ -234,11 +435,10 @@ namespace TripApp
                     }).ToList()
                 };
 
-                var response = await client.PostAsJsonAsync<dynamic>("/solve", requestData);
+                var response = await client.PostAsJsonAsync("/solve", requestData);
 
                 if (response.IsSuccessStatusCode)
                 {
-                    
                     bestPaths.Clear();
 
                     var resultString = await response.Content.ReadAsStringAsync();
