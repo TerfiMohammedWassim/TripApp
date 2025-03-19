@@ -15,6 +15,13 @@ namespace TripApp
         private bool is_starting_first = true;
         private Cities target_city;
 
+        private bool isDragStarted = false;
+        private Cities potentialStartCity = null;
+        private Cities connectionStartCity = null;
+        private Point initialTouchPosition;
+        private Point currentDragPosition;
+        private const int dragThreshold = 10;
+
         private bool isWaitingForTap = false;
         private string pendingCityName = null;
 
@@ -38,6 +45,9 @@ namespace TripApp
             TspCanvas.GestureRecognizers.Add(tapGestureRecognizer);
         }
 
+
+
+
         private static string GenerateRandomString(int length)
         {
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -49,36 +59,71 @@ namespace TripApp
 
         private void OnStartInteraction(object sender, TouchEventArgs e)
         {
-            var touchPoint = e.Touches.FirstOrDefault();
-            if (touchPoint != null)
+            var touchPoint = e.Touches.First();
+            initialTouchPosition = new Point(touchPoint.X, touchPoint.Y);
+            potentialStartCity = FindClosestCity(touchPoint.X, touchPoint.Y);
+            connectionStartCity = null;
+            isDragStarted = false;
+            TspCanvas.Invalidate();
+        }
+
+        private void OnDragInteraction(object sender, TouchEventArgs e)
+        {
+            var touchPoint = e.Touches.First();
+            currentDragPosition = new Point(touchPoint.X, touchPoint.Y);
+            double distance = CalculateDistance(initialTouchPosition, currentDragPosition);
+            if (potentialStartCity != null && distance > dragThreshold && !isDragStarted)
             {
-                // This condition was incorrect - fixed logical comparison
-                if (allCities.Keys.Any(city => Math.Abs(city.GetX() - touchPoint.X) < 10 &&
-                                               Math.Abs(city.GetY() - touchPoint.Y) < 10))
-                {
-                    starting_city = allCities.Keys.First(city =>
-                        Math.Abs(city.GetX() - touchPoint.X) < 10 &&
-                        Math.Abs(city.GetY() - touchPoint.Y) < 10);
-                }
-                else if (allCities.Keys.Any(city => Math.Abs(city.GetX() - touchPoint.X) < 10 &&
-                                                    Math.Abs(city.GetY() - touchPoint.Y) < 10))
-                {
-                    target_city = allCities.Keys.First(city =>
-                        Math.Abs(city.GetX() - touchPoint.X) < 10 &&
-                        Math.Abs(city.GetY() - touchPoint.Y) < 10);
-                }
+                connectionStartCity = potentialStartCity;
+                isDragStarted = true;
             }
             TspCanvas.Invalidate();
         }
 
-        private void OnDragInteraction(object sender, EventArgs e)
+        private void OnEndInteraction(object sender, TouchEventArgs e)
         {
+            if (isDragStarted)
+            {
+                var touchPoint = e.Touches.First();
+                Point endPosition = new Point(touchPoint.X, touchPoint.Y);
+                Cities targetCity = FindClosestCity(endPosition.X, endPosition.Y);
+                if (targetCity != null && targetCity != connectionStartCity)
+                {
+                    CreateConnection(connectionStartCity, targetCity);
+                }
+                connectionStartCity = null;
+                isDragStarted = false;
+            }
+            else if (potentialStartCity != null)
+            {
+                // Let tap gesture recognizer handle it for selecting cities
+            }
+            potentialStartCity = null;
             TspCanvas.Invalidate();
         }
 
-        private void OnEndInteraction(object sender, EventArgs e)
+        private double CalculateDistance(Point p1, Point p2)
         {
-            TspCanvas.Invalidate();
+            return Math.Sqrt(Math.Pow(p2.X - p1.X, 2) + Math.Pow(p2.Y - p1.Y, 2));
+        }
+
+        private async void CreateConnection(Cities startCity, Cities targetCity)
+        {
+            string costStr = await DisplayPromptAsync("Enter Cost",
+                "Enter the cost for the connection from " + startCity.GetName() +
+                " to " + targetCity.GetName() + ":", "OK", "Cancel");
+            if (!string.IsNullOrWhiteSpace(costStr))
+            {
+                if (int.TryParse(costStr, out int cost))
+                {
+                    startCity.GetGoingTo()[targetCity] = cost;
+                    TspCanvas.Invalidate();
+                }
+                else
+                {
+                    await DisplayAlert("Invalid Input", "Cost must be an integer.", "OK");
+                }
+            }
         }
 
         private Cities checkDuplication(Dictionary<Cities, int> cities, Cities city)

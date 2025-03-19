@@ -202,35 +202,6 @@
                 </Grid>
             </Frame>
 
-            <!-- Add/Remove City Buttons -->
-            <Frame Grid.Row="1" 
-                   HorizontalOptions="End"
-                   VerticalOptions="Start"
-                   Padding="10"
-                   CornerRadius="16"
-                   HasShadow="True"
-                   BackgroundColor="White">
-                <StackLayout Spacing="10">
-                    <Button x:Name="AddCity"
-                            Text="Add City"
-                            BackgroundColor="#28a745"
-                            TextColor="White"
-                            CornerRadius="8"
-                            FontAttributes="Bold"
-                            HeightRequest="40"
-                            Clicked="OnAddCityClicked"/>
-
-                    <Button x:Name="RemoveCity"
-                            Text="Remove City"
-                            BackgroundColor="#dc3545"
-                            TextColor="White"
-                            CornerRadius="8"
-                            FontAttributes="Bold"
-                            HeightRequest="40" 
-                            Clicked="OnDeleteCityClicked"
-                            />
-                </StackLayout>
-            </Frame>
 
             <!-- Status and Results Section -->
             <Frame Grid.Row="2" 
