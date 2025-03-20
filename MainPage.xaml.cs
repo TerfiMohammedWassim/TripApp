@@ -2,30 +2,19 @@
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
+using Microsoft.Maui.Animations;
+
 
 namespace TripApp
 {
+
+    
     public partial class MainPage : ContentPage
     {
-        private Dictionary<Cities, int> allCities = new Dictionary<Cities, int>();
+        private List<Cities> allCities = new List<Cities>();
         private Random random = new Random();
-        private Cities starting_city;
-
         private static HttpClient client = new HttpClient();
-        private bool is_starting_first = true;
-        private Cities target_city;
-
-        private bool isDragStarted = false;
-        private Cities potentialStartCity = null;
-        private Cities connectionStartCity = null;
-        private Point initialTouchPosition;
-        private Point currentDragPosition;
-        private const int dragThreshold = 10;
-
-        private bool isWaitingForTap = false;
-        private string pendingCityName = null;
-
-        private Dictionary<string, List<string>> bestPaths = new Dictionary<string, List<string>>();
+        private List<Cities> bestPaths = new List<Cities>();
         private readonly string[] cityNames = new string[]
         {
             "New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia",
@@ -40,9 +29,6 @@ namespace TripApp
         {
             InitializeComponent();
             TspCanvas.Drawable = new CitiesDrawable(allCities, bestPaths);
-            var tapGestureRecognizer = new TapGestureRecognizer();
-            tapGestureRecognizer.Tapped += OnCanvasTapped;
-            TspCanvas.GestureRecognizers.Add(tapGestureRecognizer);
         }
 
 
@@ -56,74 +42,11 @@ namespace TripApp
                 .Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
-
-        private void OnStartInteraction(object sender, TouchEventArgs e)
-        {
-            var touchPoint = e.Touches.First();
-            initialTouchPosition = new Point(touchPoint.X, touchPoint.Y);
-            potentialStartCity = FindClosestCity(touchPoint.X, touchPoint.Y);
-            connectionStartCity = null;
-            isDragStarted = false;
-            TspCanvas.Invalidate();
-        }
-
-        private void OnDragInteraction(object sender, TouchEventArgs e)
-        {
-            var touchPoint = e.Touches.First();
-            currentDragPosition = new Point(touchPoint.X, touchPoint.Y);
-            double distance = CalculateDistance(initialTouchPosition, currentDragPosition);
-            if (potentialStartCity != null && distance > dragThreshold && !isDragStarted)
-            {
-                connectionStartCity = potentialStartCity;
-                isDragStarted = true;
-            }
-            TspCanvas.Invalidate();
-        }
-
-        private void OnEndInteraction(object sender, TouchEventArgs e)
-        {
-            if (isDragStarted)
-            {
-                var touchPoint = e.Touches.First();
-                Point endPosition = new Point(touchPoint.X, touchPoint.Y);
-                Cities targetCity = FindClosestCity(endPosition.X, endPosition.Y);
-                if (targetCity != null && targetCity != connectionStartCity)
-                {
-                    CreateConnection(connectionStartCity, targetCity);
-                }
-                connectionStartCity = null;
-                isDragStarted = false;
-            }
-            else if (potentialStartCity != null)
-            {
-                // Let tap gesture recognizer handle it for selecting cities
-            }
-            potentialStartCity = null;
-            TspCanvas.Invalidate();
-        }
+            
 
         private double CalculateDistance(Point p1, Point p2)
         {
             return Math.Sqrt(Math.Pow(p2.X - p1.X, 2) + Math.Pow(p2.Y - p1.Y, 2));
-        }
-
-        private async void CreateConnection(Cities startCity, Cities targetCity)
-        {
-            string costStr = await DisplayPromptAsync("Enter Cost",
-                "Enter the cost for the connection from " + startCity.GetName() +
-                " to " + targetCity.GetName() + ":", "OK", "Cancel");
-            if (!string.IsNullOrWhiteSpace(costStr))
-            {
-                if (int.TryParse(costStr, out int cost))
-                {
-                    startCity.GetGoingTo()[targetCity] = cost;
-                    TspCanvas.Invalidate();
-                }
-                else
-                {
-                    await DisplayAlert("Invalid Input", "Cost must be an integer.", "OK");
-                }
-            }
         }
 
         private Cities checkDuplication(Dictionary<Cities, int> cities, Cities city)
@@ -133,133 +56,16 @@ namespace TripApp
                 if (c.Key.GetName() == city.GetName())
                 {
                     city.setName(GenerateRandomString(5));
-                    return checkDuplication(cities, city); // Added recursion to handle multiple duplicates
+                    return checkDuplication(cities, city); 
                 }
             }
             return city;
-        }
-
-        private void OnAddCityClicked(object sender, EventArgs e)
-        {
-            _ = StartAddingCity();
-        }
-
-        private async Task StartAddingCity()
-        {
-            // Check if cities have been generated
-            if (allCities.Count == 0)
-            {
-                await DisplayAlert("Error", "You need to generate cities first.", "OK");
-                return;
-            }
-
-            // Prompt user for city name
-            string cityName = await DisplayPromptAsync(
-                "Add City",
-                "Enter the name of the city:",
-                "OK",
-                "Cancel"
-            );
-
-            // Handle cancellation or empty input
-            if (string.IsNullOrWhiteSpace(cityName))
-            {
-                await DisplayAlert("Error", "City name cannot be empty.", "OK");
-                return;
-            }
-
-            // Check if the city name already exists
-            if (allCities.Any(city => city.Key.GetName().Equals(cityName, StringComparison.OrdinalIgnoreCase)))
-            {
-                await DisplayAlert("Error", "A city with this name already exists.", "OK");
-                return;
-            }
-
-            // Store the pending city name
-            pendingCityName = cityName;
-            isWaitingForTap = true;
-
-            await DisplayAlert("Set Location", "Now tap on the canvas to set the city location.", "OK");
-        }
-
-
-        private void OnDeleteCityClicked(object sender, EventArgs e)
-        {
-            _ = DeleteCityAsync();
-        }
-
-        private async Task DeleteCityAsync()
-        {
-            if (allCities.Count == 0)
-            {
-                await DisplayAlert("Error Occurred", "You need to generate cities first", "OK");
-                return;
-            }
-
-            string cityToDelete = await DisplayPromptAsync("Delete City", "Enter the name of the city to delete", "OK", "Cancel");
-            if (string.IsNullOrEmpty(cityToDelete))
-                return;
-
-            Cities cityToRemove = null;
-            foreach (var city in allCities.Keys)
-            {
-                if (city.GetName().Equals(cityToDelete, StringComparison.OrdinalIgnoreCase))
-                {
-                    cityToRemove = city;
-                    break;
-                }
-            }
-
-            if (cityToRemove == null)
-            {
-                await DisplayAlert("Error Occurred", "City not found", "OK");
-                return;
-            }
-
-            if (cityToRemove == starting_city)
-            {
-                bool answer = await DisplayAlert("Delete City", "Are you sure you want to delete the starting city?", "Yes", "No");
-                if (answer)
-                {
-                    starting_city.SetIsStarting(false);
-                    starting_city = null;
-                }
-                else
-                {
-                    return;
-                }
-            }
-
-            if (cityToRemove == target_city)
-            {
-                target_city = null;
-            }
-
-            foreach (var city in allCities.Keys.ToList())
-            {
-                if (city.GetGoingTo().ContainsKey(cityToRemove))
-                {
-                    city.GetGoingTo().Remove(cityToRemove);
-                }
-            }
-
-            allCities.Remove(cityToRemove);
-            TspCanvas.Invalidate();
         }
 
         private void OnGenerateCitiesClicked(object sender, EventArgs e)
         {
             allCities.Clear();
             bestPaths.Clear();
-
-            if (starting_city != null)
-            {
-                starting_city.SetIsStarting(false);
-                starting_city = null;
-            }
-
-            target_city = null;
-            is_starting_first = true;
 
             if (!int.TryParse(CitiesCountEntry.Text, out int numCities) || numCities < 4)
             {
@@ -272,7 +78,6 @@ namespace TripApp
                 return;
             }
 
-            // Create a shuffled list of city names to avoid duplicates
             var shuffledCityNames = cityNames.OrderBy(x => random.Next()).Take(numCities).ToList();
 
             for (int i = 0; i < numCities; i++)
@@ -280,9 +85,9 @@ namespace TripApp
                 string name = shuffledCityNames[i];
                 double x = random.NextDouble() * (TspCanvas.Width * 0.8) + (TspCanvas.Width * 0.1);
                 double y = random.NextDouble() * (TspCanvas.Height * 0.8) + (TspCanvas.Height * 0.1);
-                Dictionary<Cities, int> connections = new Dictionary<Cities, int>();
-                Cities city = new Cities(name, x, y, connections, false);
-                allCities.Add(city, 0);
+                List<Cities> connections = new List<Cities>();
+                Cities city = new Cities(name, x, y, connections);
+                allCities.Add(city);
             }
 
             foreach (var city in allCities)
@@ -290,141 +95,32 @@ namespace TripApp
                 int numConnections = random.Next(1, 3);
                 for (int i = 0; i < numConnections; i++)
                 {
-                    var potentialCities = allCities.Keys.Where(c => c != city.Key && !city.Key.GetGoingTo().ContainsKey(c)).ToList();
+                    var potentialCities = allCities.Where(c => c != city && !city.GetLinkedTo().Contains(c)).ToList();
                     if (potentialCities.Count > 0)
                     {
                         Cities targetCity = potentialCities[random.Next(potentialCities.Count)];
                         int cost = random.Next(1, 30);
-                        city.Key.GetGoingTo().Add(targetCity, cost);
+                        city.GetLinkedTo().Add(targetCity);
                     }
                 }
             }
             TspCanvas.Invalidate();
         }
-
-        // Fixed method signature - parameter types were incorrect
         private void OnCanvasDraging(object sender, EventArgs e)
         {
             TspCanvas.Invalidate();
-        }
-
-        private void OnCanvasTapped(object sender, EventArgs e)
-        {
-            Point tapLocation = new Point();
-            if (e is TappedEventArgs tappedEvent)
-            {
-                tapLocation = (Point)tappedEvent.GetPosition((View)sender);
-            }
-
-            if (isWaitingForTap && !string.IsNullOrEmpty(pendingCityName))
-            {
-                // We're waiting for a tap to set a new city location
-                double x = tapLocation.X;
-                double y = tapLocation.Y;
-
-                // Check if the location is already taken
-                if (allCities.Any(city =>
-                    Math.Abs(city.Key.GetX() - x) < 10 &&
-                    Math.Abs(city.Key.GetY() - y) < 10))
-                {
-                    DisplayAlert("Error", "This location is too close to another city.", "OK");
-                    return;
-                }
-
-                // Add the new city at the tapped location
-                allCities.Add(new Cities(pendingCityName, x, y, new Dictionary<Cities, int>(), false), 0);
-
-                // Reset the waiting state
-                isWaitingForTap = false;
-                pendingCityName = null;
-
-                // Refresh the canvas
-                TspCanvas.Invalidate();
-                return;
-            }
-
-            // If we're not waiting for a tap to add a city, proceed with the original functionality
-            if (allCities.Count == 0)
-                return;
-
-            Cities closestCity = FindClosestCity(tapLocation.X, tapLocation.Y);
-
-            if (closestCity != null)
-            {
-                if (is_starting_first)
-                {
-                    if (starting_city != null)
-                    {
-                        starting_city.SetIsStarting(false);
-                    }
-
-                    starting_city = closestCity;
-                    starting_city.SetIsStarting(true);
-
-                    is_starting_first = false;
-
-                    DisplayAlert("Starting City", $"Selected {starting_city.GetName()} as starting city", "OK");
-                }
-                else
-                {
-                    if (closestCity == starting_city)
-                    {
-                        DisplayAlert("Invalid Selection", "Starting and target cities must be different", "OK");
-                    }
-                    else
-                    {
-                        target_city = closestCity;
-                        DisplayAlert("Target City", $"Selected {target_city.GetName()} as target city", "OK");
-                        is_starting_first = true;
-                    }
-                }
-
-                TspCanvas.Invalidate();
-            }
-        }
-
-        private Cities FindClosestCity(double x, double y)
-        {
-            const double maxDistance = 30;
-            Cities closest = null;
-            double minDistance = double.MaxValue;
-
-            foreach (var city in allCities)
-            {
-                double distance = Math.Sqrt(Math.Pow(x - city.Key.GetX(), 2) + Math.Pow(y - city.Key.GetY(), 2));
-                if (distance < minDistance && distance < maxDistance)
-                {
-                    minDistance = distance;
-                    closest = city.Key;
-                }
-            }
-
-            return closest;
         }
 
         private async void OnSolveClicked(object sender, EventArgs e)
         {
             try
             {
-                if (starting_city == null)
-                {
-                    await DisplayAlert("No Starting City", "You need to select a starting city", "OK");
-                    return;
-                }
-
-                if (target_city == null)
-                {
-                    await DisplayAlert("No Target City", "You need to select a target city", "OK");
-                    return;
-                }
-
                 if (allCities == null || allCities.Count == 0)
                 {
                     await DisplayAlert("No Cities", "Please generate cities first", "OK");
                     return;
                 }
 
-                // Validate input fields before sending to server
                 if (!double.TryParse(MutationRateEntry.Text, out double mutationRate) ||
                     mutationRate < 0 || mutationRate > 1)
                 {
@@ -452,30 +148,19 @@ namespace TripApp
 
                 var requestData = new
                 {
-                    MutationRate = mutationRate, // Fixed: Using parsed value instead of text
-                    Generations = generations,    // Fixed: Using parsed value instead of text
-                    Population = population,      // Fixed: Using parsed value instead of text
-                    StartingCity = new
+                    mutationRate = mutationRate.ToString(),
+                    generations = generations.ToString(),
+                    population = population.ToString(),
+                    allCities = allCities.Select(c => new
                     {
-                        Name = starting_city.GetName(),
-                        X = starting_city.GetX(),  // Added X coordinate
-                        Y = starting_city.GetY(),  // Added Y coordinate
-                        GoingTo = starting_city.GetGoingTo().Select(c => new {
-                            Name = c.Key.GetName(),
-                            X = c.Key.GetX(),
-                            Y = c.Key.GetY(),
-                            Cost = c.Value
-                        }).ToList()
-                    },
-                    TargetCity = target_city.GetName(),
-                    AllCities = allCities.Select(c => new
-                    {
-                        Name = c.Key.GetName(),
-                        X = c.Key.GetX(),  // Added X coordinate
-                        Y = c.Key.GetY(),  // Added Y coordinate
-                        GoingTo = c.Key.GetGoingTo().Select(gc => new {
-                            Name = gc.Key.GetName(),
-                            Cost = gc.Value
+                        name = c.GetName(),
+                        x = c.GetX(),
+                        y = c.GetY(),
+                        linkedTo = c.GetLinkedTo().Select(gc => new
+                        {
+                            name = gc.GetName(),
+                            X = gc.GetX(),
+                            Y = gc.GetY()
                         }).ToList()
                     }).ToList()
                 };
@@ -484,58 +169,41 @@ namespace TripApp
 
                 if (response.IsSuccessStatusCode)
                 {
-                    bestPaths.Clear();
+                    var responseContent = response.Content.ReadAsStringAsync();
+                    var apiResponse = JsonDocument.Parse(responseContent.Result);
 
-                    var resultString = await response.Content.ReadAsStringAsync();
-                    var resultJson = JsonDocument.Parse(resultString);
-
-                    if (resultJson.RootElement.TryGetProperty("bestPaths", out var pathsElement))
+                    if (apiResponse.RootElement.TryGetProperty("bestPaths", out var pathsElement))
                     {
-                        foreach (var targetProperty in pathsElement.EnumerateObject())
+                    foreach(var path in pathsElement.EnumerateArray())
                         {
-                            string targetCity = targetProperty.Name;
-                            var pathData = targetProperty.Value;
-
-                            if (pathData.TryGetProperty("path", out var pathArray))
+                            String cityname = path.ToString();
+                            foreach (var city in allCities)
                             {
-                                List<string> path = new List<string>();
-                                foreach (var cityElement in pathArray.EnumerateArray())
+                                if (city.GetName() == cityname)
                                 {
-                                    path.Add(cityElement.GetString());
+                                    this.bestPaths.Add(city);
                                 }
-                                bestPaths[targetCity] = path;
                             }
+
                         }
                     }
-
-                    int totalCitiesReached = 0;
-                    int totalCities = 0;
-
-                    if (resultJson.RootElement.TryGetProperty("totalCitiesReached", out var citiesReachedElement))
-                    {
-                        totalCitiesReached = citiesReachedElement.GetInt32();
-                    }
-
-                    if (resultJson.RootElement.TryGetProperty("totalCities", out var totalCitiesElement))
-                    {
-                        totalCities = totalCitiesElement.GetInt32();
-                    }
-
                     TspCanvas.Invalidate();
+                    DisplayAlert(Title,$"bestpath: {this.bestPaths.ToArray()[0].GetName()}"+$"Total Cities: {apiResponse.RootElement.GetProperty("totalCities").GetInt32()}\n" +
+                        $"Total Cities Reached: {apiResponse.RootElement.GetProperty("totalCitiesReached").GetDouble()}", "OK");
 
-                    await DisplayAlert("Solution",
-                        $"Paths calculated successfully!\n" +
-                        $"Cities reached: {totalCitiesReached} out of {totalCities}", "OK");
                 }
-                else
-                {
-                    await DisplayAlert("Server Error", $"Server returned: {response.StatusCode}", "OK");
-                }
+
             }
             catch (Exception ex)
             {
                 await DisplayAlert("Error", $"An error occurred: {ex.Message}", "OK");
             }
         }
+    }
+    public class Apiresponse
+    {
+        public List<string> BestPaths { get; set; }
+        public int TotalCities { get; set; }
+        public double TotalCitiesReached { get; set; }
     }
 }
