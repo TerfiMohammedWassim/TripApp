@@ -187,10 +187,8 @@ namespace TripApp
 
                         }
                     }
+                    bestPaths.Add(bestPaths[0]);
                     TspCanvas.Invalidate();
-                    DisplayAlert(Title,$"bestpath: {this.bestPaths.ToArray()[0].GetName()}"+$"Total Cities: {apiResponse.RootElement.GetProperty("totalCities").GetInt32()}\n" +
-                        $"Total Cities Reached: {apiResponse.RootElement.GetProperty("totalCitiesReached").GetDouble()}", "OK");
-
                 }
 
             }
@@ -200,10 +198,5 @@ namespace TripApp
             }
         }
     }
-    public class Apiresponse
-    {
-        public List<string> BestPaths { get; set; }
-        public int TotalCities { get; set; }
-        public double TotalCitiesReached { get; set; }
-    }
+    
 }
