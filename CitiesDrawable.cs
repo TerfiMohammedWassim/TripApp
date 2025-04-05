@@ -18,14 +18,6 @@ public class CitiesDrawable : IDrawable
             return;
         }
 
-        foreach (Cities city in cities)
-        {
-            foreach (var connection in city.GetLinkedTo())
-            {
-                DrawArrow(canvas, city.GetX(), city.GetY(), connection.GetX(), connection.GetY(), "", Colors.Grey);
-            }
-        }
-
         if (bestPaths != null && bestPaths.Count > 0)
         {
             for (int i = 0; i < bestPaths.Count - 1; i++)
