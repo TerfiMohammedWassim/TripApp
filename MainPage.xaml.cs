@@ -8,12 +8,11 @@ using Microsoft.Maui.Animations;
 namespace TripApp
 {
 
-    
+
     public partial class MainPage : ContentPage
     {
         private List<Cities> allCities = new List<Cities>();
         private Random random = new Random();
-        private static HttpClient client = new HttpClient();
         private List<Cities> bestPaths = new List<Cities>();
         private readonly string[] cityNames = new string[]
         {
@@ -42,7 +41,7 @@ namespace TripApp
                 .Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
-            
+
 
         private double CalculateDistance(Point p1, Point p2)
         {
@@ -56,7 +55,7 @@ namespace TripApp
                 if (c.Key.GetName() == city.GetName())
                 {
                     city.setName(GenerateRandomString(5));
-                    return checkDuplication(cities, city); 
+                    return checkDuplication(cities, city);
                 }
             }
             return city;
@@ -142,55 +141,94 @@ namespace TripApp
                     return;
                 }
 
-                client.BaseAddress = new Uri("http://localhost:5000");
-                client.DefaultRequestHeaders.Accept.Clear();
-                client.DefaultRequestHeaders.Add("User-Agent", "Maui TSP Solver");
+               
+                bestPaths.Clear();
 
-                var requestData = new
+
+                using(var client = new HttpClient())
                 {
-                    mutationRate = mutationRate.ToString(),
-                    generations = generations.ToString(),
-                    population = population.ToString(),
-                    allCities = allCities.Select(c => new
+                    client.BaseAddress = new Uri("http://localhost:5000");
+                    client.DefaultRequestHeaders.Accept.Clear();
+                    client.DefaultRequestHeaders.Add("User-Agent", "Maui TSP Solver");
+                    client.Timeout = TimeSpan.FromMinutes(5);
+                    var requestData = new
                     {
-                        name = c.GetName(),
-                        x = c.GetX(),
-                        y = c.GetY(),
-                        linkedTo = c.GetLinkedTo().Select(gc => new
+                        mutationRate = mutationRate.ToString(),
+                        generations = generations.ToString(),
+                        population = population.ToString(),
+                        allCities = allCities.Select(c => new
                         {
-                            name = gc.GetName(),
-                            X = gc.GetX(),
-                            Y = gc.GetY()
-                        }).ToList()
-                    }).ToList()
-                };
-
-                var response = await client.PostAsJsonAsync("/solve", requestData);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var responseContent = response.Content.ReadAsStringAsync();
-                    var apiResponse = JsonDocument.Parse(responseContent.Result);
-
-                    if (apiResponse.RootElement.TryGetProperty("bestPaths", out var pathsElement))
-                    {
-                    foreach(var path in pathsElement.EnumerateArray())
-                        {
-                            String cityname = path.ToString();
-                            foreach (var city in allCities)
+                            name = c.GetName(),
+                            x = c.GetX(),
+                            y = c.GetY(),
+                            linkedTo = c.GetLinkedTo().Select(gc => new
                             {
-                                if (city.GetName() == cityname)
+                                name = gc.GetName(),
+                                x = gc.GetX(), 
+                                y = gc.GetY()  
+                            }).ToList()
+                        }).ToList()
+                    };
+
+                    var options = new JsonSerializerOptions
+                    {
+                        WriteIndented = false, 
+                        MaxDepth = 64 
+                    };
+
+                    var response = await client.PostAsJsonAsync("/solve", requestData, options);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var responseContent = await response.Content.ReadAsStringAsync();
+                        var apiResponse = JsonDocument.Parse(responseContent);
+                        
+
+                        if (apiResponse.RootElement.TryGetProperty("bestPaths", out var pathsElement))
+                        {
+                            foreach (var path in pathsElement.EnumerateArray())
+                            {
+                                string cityname = path.ToString();
+                                foreach (var city in allCities)
                                 {
-                                    this.bestPaths.Add(city);
+                                    if (city.GetName() == cityname)
+                                    {
+                                        bestPaths.Add(city);
+                                    }
                                 }
                             }
 
+                            if (bestPaths.Count > 0)
+                            {
+                                bestPaths.Add(bestPaths[0]);
+                            }
+
+                            TspCanvas.Invalidate();
+                        }
+
+                        SolutionPathLabel.Text = $"Best Path: {string.Join(" -> ", bestPaths.Select(c => c.GetName()))}";
+
+                        GenerationLabel.Text = $"Generations: {apiResponse.RootElement.GetProperty("generations").ToString()}";
+
+                        if (apiResponse.RootElement.TryGetProperty("bestDistance",out var citiesReached))
+                        {
+                            DistanceLabel.Text = $"Total Distance: {citiesReached.ToString()}";
+                        }
+
+                        if(apiResponse.RootElement.TryGetProperty("bestFitness",out var bestFitness))
+                        {
+                            FitnessLabel.Text = $"Best Fitness: {bestFitness.ToString()}";
                         }
                     }
-                    bestPaths.Add(bestPaths[0]);
-                    TspCanvas.Invalidate();
-                }
+                    else
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        await DisplayAlert("Server Error",
+                            $"Status: {response.StatusCode}\nDetails: {errorContent}", "OK");
+                    }
 
+                }
+                
             }
             catch (Exception ex)
             {
@@ -198,5 +236,5 @@ namespace TripApp
             }
         }
     }
-    
+
 }
